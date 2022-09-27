@@ -1,2 +1,3 @@
-# neutron_spx
-Sparx framework for neutron (Rei)
+# Neutron Sparx
+
+Sparx framework for neutron (Rei).
