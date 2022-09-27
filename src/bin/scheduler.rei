@@ -47,7 +47,7 @@ main: (cpus: mut Cpus) {
 
     // note there actually isnt really a server per se. Just a loop that keeps checking whether there's something in the buffer. If not, it just calls sleep() until interrupted by the scheduler or wake()'d by a request
     loop {
-        if let Ok(req) = pending_requests.first() {
+        while let Ok(req) = pending_requests.first() {
             match req {
                 NewProcess => {
                     new_process()
@@ -60,9 +60,10 @@ main: (cpus: mut Cpus) {
                     )
                 }
             }
-
-            pending_requests.empty()? sleep(): continue
         }
+        
+        // on core::, this actually calls sleep() or maybe back to the cpu runner
+        yield
     }
 }
 
@@ -71,8 +72,9 @@ main: (cpus: mut Cpus) {
 // asm: annotation(type=Phantasm) {}
 
 // would be defined in kernel mode
+// and be linked (exported as a lib and included in the kernel)
 @interrupt_handler(LocalCoreTimer)
-cpu_dequeue: () {
+export cpu_dequeue: () {
     // would not be on the stack
     let exec: (thread) => @asm{
         x0 = thread.x0
@@ -106,8 +108,16 @@ interrupt_handler: annotation (int: InterruptType) {
     }
 }
 
+// process sections
+// Code: Bytes
+// Data: Bytes
+
 Request: enum {
-    NewProcess: complex {}
+    NewProcess: {
+        // move them into the process for checks and direct writes?
+        // wait no, basically, just the entire ELF on the stack before parsing
+        elf_program: ElfProgram
+    }
     KillProcess
     // Kind of like Kthreads that back up each Uthread and queued in a CPU that is most local to the process's workspace/memory allocations
     NewThread
@@ -115,4 +125,5 @@ Request: enum {
     Reschedule
 }
 
+// extend objects can only be in modules and non enum objects? hmm well I guess maybe you can but like prob not a good idea
 Request: extend {}
