@@ -1,0 +1,7 @@
+remote_theme: just-the-docs/just-the-docs
+
+aux_links:
+  "Github":
+    - "https://github.com/hyperswine/neutron_spx"
+
+footer_content: "NeutronSparx"

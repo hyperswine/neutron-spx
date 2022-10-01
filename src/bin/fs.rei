@@ -183,3 +183,11 @@ DiskWriter: {
         }
     }
 }
+
+# Represents a disk on the system
+DiskDriver: {
+    id: Id
+    protocol: enum {
+        
+    }
+}
