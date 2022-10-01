@@ -178,3 +178,28 @@ Request: enum {
     Dealloc
     Realloc
 }
+
+// COMMUNICATION PRIMITIVES
+
+# Mostly for one way communication between process -> service
+ReqBuffer: {
+    requests: Size = 0
+    frame_numbers: Vec<FrameNumber>
+}
+
+ReqBuffer: extend {
+    new: (size: Size) -> Self {
+        // ask system for pages
+        let frame_numbers = alloc_pages_shared(size)
+
+        // NOTE: initialiser structs must have direct mappings between names unless default value
+        Self{frame_numbers}
+    }
+
+    // map the pages of the buffer into the process' address space, usually at a known location (defined in neutronapi or std)
+    // for a specific spx
+    map_to: (&self, vrange: Range, process_addr_space: &mut AddressSpace) {
+        // the process should be able to write requests to the buffer now
+        process_addr_space.map(vrange, self)
+    }
+}
