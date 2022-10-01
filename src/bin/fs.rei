@@ -150,7 +150,7 @@ Block: [u8; 4096]
 DiskReader: {
     read_block: async (block_number: LogicalBlockNumber) -> Block {
         // the driver
-        disk_driver.dma_from_disk(Read, block_number).await
+        disk_driver.dma_from_disk(block_number).await
     }
 }
 
@@ -160,3 +160,26 @@ DiskReader: {
     BUFFER CACHE (FOR WRITES)
 */
 
+const TIME: Time = 10ms
+
+DiskWriter: {
+    write_block: (&mut self, block_number: LogicalBlockNumber, block: Block) {
+        // push block to queue
+        self.queue_write(block_number, block)
+    }
+
+    queue_write: (&mut self, block_number: LogicalBlockNumber, block: Block) {
+        self.queue.push(block_number, block)
+    }
+
+    # should be called every now and then (maybe a loop)
+    write_bulk: (&mut self) {
+        if self.queue.is_full() or self.time_elasped > TIME {
+            self.time_elasped = 0
+            self.queue.map(block_number, block => disk_driver.dma_to_disk(block_number, block))
+        }
+        else {
+            self.time_elasped += curr_time()
+        }
+    }
+}
