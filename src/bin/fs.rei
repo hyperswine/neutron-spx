@@ -65,11 +65,13 @@ BlockTable: [Descriptor; 512]
 @derive(Copy, Clone)
 Descriptor: BlockDescriptor | PageDescriptor
 
+LogicalBlockNumber: u64
+
 # A block descriptor simply points to the next block table entry (address)
-BlockDescriptor: u64
+BlockDescriptor: LogicalBlockNumber
 
 # A page descriptor actually points to a 4K block of data
-PageDescriptor: u64
+PageDescriptor: LogicalBlockNumber
 
 BlockTable: extend {
     new: () -> Self {
@@ -102,6 +104,8 @@ new_file: (path: Path) -> Status {
 // insertion, deletion, etc could be kinda slow though
 // yea basically just bulk read and write and as long as not too many stuff are open, caching should be fine
 
+// nothing, data or enum maybe...
+
 Filesystem: complex {
     // the = Tree[File]() is implicit to the default new constructor
     // NOTE: the tree in use is actually a cache friendly tree
@@ -129,4 +133,30 @@ Filesystem: complex {
     // reads should generally be done asap
 }
 
+File: {
+    # read the entire file to a string (based on the metadata encoding, usually utf-8)
+    read: (&mut self, file: _) -> String {
+        // fetch all known blocks from disk from the in memory block table (given that its not dirty)
+        let blocks: Vec<LogicalBlockNumber> = self.block_table.fetch_all()
+        // push read requests for those blocks
+        let raw_data = blocks.map(b => DiskReader::read_block(b)).accumulate(acc, bytes => acc + bytes)
+        // parse the encoding or get from in memory data store
+        parse(self.encoding, raw_data)
+    }
+}
+
+Block: [u8; 4096]
+
+DiskReader: {
+    read_block: async (block_number: LogicalBlockNumber) -> Block {
+        // the driver
+        disk_driver.dma_from_disk(Read, block_number).await
+    }
+}
+
 // ramfs bulk writer
+
+/*
+    BUFFER CACHE (FOR WRITES)
+*/
+
