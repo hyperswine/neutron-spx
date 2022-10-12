@@ -1,3 +1,65 @@
+// maybe have a list of object {name, path}
+const SPX_IMG_BASE_PATH = "/sys/spx/"
+const SPX_IMG = ["fs" "graphics" "mem" "arc"]
+
+/*
+    core::types::Align4K pads the rest with 0s
+
+    @align(4096) Align4K[T]: T
+*/
+
+main: () -> Status {
+    // maybe its possible to create pending_requests as a static variable on the stack
+    // its basically just a circ buffer
+    // maybe wrap it in an MemoryInterface or IPC
+    // to let the kernel map that buffer into other addr spaces
+    // maybe compile sparx so that static mut pending_requests
+    // or @state pending_requests gets loaded into an aligned 4K
+
+    // NOTE: all defaults should be "empty"
+
+    mut pending_requests = Align4K(CircularBuffer(Request()))
+
+    // startup the other sparx
+    
+    /*
+        scheduler allows userspace processes to use the ABI to scheduler threads on active cores
+        cores should already be activated by arcboot or neutron but probably idle
+    */
+
+    // allow a sparx to be restarted
+    let active_spx = SPX_IMG.map(spx => spawn(path=SPX_IMG_BASE_PATH+spx))
+
+    loop {
+        // the system sparx doesnt actually much itself. Its mostly a nice way to manage other sparx in userspace and shut everything down
+        while let Ok(req) = pending_requests.first() {
+            match req {
+                Shutdown => {
+                    // send a stop signal to child sparx
+                    // NOTE: the sparx API should have a kill method that sends a request to it in this manner
+                    // or an OS signal to ensure they shutdown as soon as possible
+                    active_spx.for_each(spx => spx.kill())
+                    return Ok()
+                }
+            }
+        }
+
+        // ? theres prob some way to directly yield to the cpu scheduler?
+        // spx:system should have started from the scheduler
+
+        // if a sparx goes inactive, (handle is Err), restart it
+        // NOTE: sparx all have set pids? so we can do this easier? Uhh
+        // THIS IS DIFFERENT TO A SPARX THAT IS BG'd or yielded
+        active_spx.find(s => !s).for_each(s => spawn(s.path()))
+
+        yield
+    }
+}
+
+Request: enum {
+    Shutdown
+}
+
 use neutronapi::sparx::*
 
 // priorities are u8 (0-255)

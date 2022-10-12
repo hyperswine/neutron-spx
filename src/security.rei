@@ -1,8 +1,10 @@
 #*
-    Process Authentication
+    Process Authentication and FS/OS wide auth??
 *#
 
-Authorizer: {
+// maybe integrate this as a lib into other sparx?
+
+export default Authorizer: {
     // allow a process to authenticate itself (and display its authorities so it may communicate with the sparx and/or have the driver code mapped to their address space)
     authenticate: (&self, process: Process, key: Key) -> Status {
         // get the executable id of the process
